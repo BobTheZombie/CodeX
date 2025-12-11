@@ -4,17 +4,22 @@ import FileSelector from "./components/FileSelector";
 import PromptPanel from "./components/PromptPanel";
 import ChangePreview, { ProposedChangeSet } from "./components/ChangePreview";
 
-const apiBase = import.meta.env.VITE_API_BASE_URL;
+const apiBase = import.meta.env.VITE_API_BASE_URL ?? "";
+const githubClientId = import.meta.env.VITE_GITHUB_CLIENT_ID;
+const authRedirectUri = `${apiBase}/api/auth/callback`;
 
 const postJson = async <T,>(path: string, body?: unknown): Promise<T> => {
   const response = await fetch(`${apiBase}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify(body ?? {}),
   });
   if (!response.ok) {
     const message = await response.text();
-    throw new Error(message || response.statusText);
+    const error = new Error(message || response.statusText) as Error & { status?: number };
+    error.status = response.status;
+    throw error;
   }
   return response.json() as Promise<T>;
 };
@@ -31,6 +36,19 @@ function App() {
   const [applyResult, setApplyResult] = useState<{ branch: string; commitSha: string; pullRequestUrl: string | null } | null>(null);
   const [applyError, setApplyError] = useState<string | null>(null);
 
+  const authorizeUrl = useMemo(() => {
+    if (!githubClientId) return null;
+    return `https://github.com/login/oauth/authorize?client_id=${githubClientId}&scope=repo&redirect_uri=${encodeURIComponent(authRedirectUri)}`;
+  }, [authRedirectUri, githubClientId]);
+
+  const handleLogin = () => {
+    if (!authorizeUrl) {
+      setRepoError("GitHub OAuth client ID is not configured.");
+      return;
+    }
+    window.location.href = authorizeUrl;
+  };
+
   useEffect(() => {
     const loadRepos = async () => {
       try {
@@ -38,7 +56,11 @@ function App() {
         const data = await postJson<RepoSummary[]>("/api/list-repos");
         setRepos(data);
       } catch (error: any) {
-        setRepoError(error.message ?? "Failed to load repositories");
+        if (error.status === 401) {
+          setRepoError("Please log in with GitHub to continue.");
+        } else {
+          setRepoError(error.message ?? "Failed to load repositories");
+        }
       }
     };
     loadRepos();
@@ -91,6 +113,16 @@ function App() {
   return (
     <div className="container">
       <h1>AI Codex Control Panel</h1>
+      <div className="card" style={{ display: "flex", gap: "1rem", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <h3>Authentication</h3>
+          <p style={{ marginBottom: 0 }}>Sign in with GitHub to list repositories and apply changes.</p>
+        </div>
+        <button onClick={handleLogin} disabled={!authorizeUrl}>
+          Login with GitHub
+        </button>
+      </div>
+
       <div className="card">
         <RepoSelector
           repos={repoOptions}

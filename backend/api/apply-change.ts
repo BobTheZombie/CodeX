@@ -1,13 +1,6 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
 import { Octokit } from "@octokit/rest";
-
-const ensureGitHubToken = () => {
-  const token = process.env.GITHUB_TOKEN;
-  if (!token) {
-    throw new Error("GITHUB_TOKEN is not set");
-  }
-  return token;
-};
+import { requireGitHubToken } from "./utils/auth";
 
 interface Change {
   path: string;
@@ -28,14 +21,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
+  const token = requireGitHubToken(req, res);
+  if (!token) return;
+
   try {
-    const octokit = new Octokit({ auth: ensureGitHubToken() });
+    const octokit = new Octokit({ auth: token });
 
     const baseRef = await octokit.git.getRef({ owner, repo, ref: `heads/${baseBranch}` });
     const baseCommitSha = baseRef.data.object.sha;
     const baseCommit = await octokit.git.getCommit({ owner, repo, commit_sha: baseCommitSha });
 
-    const treeItems = [] as Array<{ path: string; mode: string; type: "blob"; sha: string | null }>;
+    const treeItems = [] as Array<{ path: string; mode: "100644"; type: "blob"; sha: string | null }>;
 
     for (const change of changes as Change[]) {
       if (change.operation === "delete") {
