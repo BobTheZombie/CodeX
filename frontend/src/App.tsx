@@ -175,6 +175,7 @@ function App() {
         <div className="card">
           <ChangePreview
             changeSet={changeSet}
+            onChange={(updatedChangeSet) => setChangeSet(updatedChangeSet)}
             onApply={handleApply}
             applyResult={applyResult}
           />
