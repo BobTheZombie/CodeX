@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import RepoSelector, { RepoSummary } from "./components/RepoSelector";
 import FileSelector from "./components/FileSelector";
 import PromptPanel from "./components/PromptPanel";
@@ -35,6 +35,9 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [applyResult, setApplyResult] = useState<{ branch: string; commitSha: string; pullRequestUrl: string | null } | null>(null);
   const [applyError, setApplyError] = useState<string | null>(null);
+  const [hasOpenAiKey, setHasOpenAiKey] = useState(false);
+  const [openAiKey, setOpenAiKey] = useState("");
+  const [openAiError, setOpenAiError] = useState<string | null>(null);
 
   const authorizeUrl = useMemo(() => {
     if (!githubClientId) return null;
@@ -65,6 +68,71 @@ function App() {
     };
     loadRepos();
   }, []);
+
+  useEffect(() => {
+    const fetchOpenAiStatus = async () => {
+      try {
+        setOpenAiError(null);
+        const response = await fetch(`${apiBase}/api/auth/openai-key`, { credentials: "include" });
+        if (!response.ok) {
+          const message = await response.text();
+          throw new Error(message || response.statusText);
+        }
+        const data = (await response.json()) as { hasApiKey?: boolean };
+        setHasOpenAiKey(Boolean(data.hasApiKey));
+      } catch (error: any) {
+        setOpenAiError(error.message ?? "Failed to verify OpenAI login");
+      }
+    };
+
+    fetchOpenAiStatus();
+  }, []);
+
+  const handleOpenAiSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!openAiKey.trim()) {
+      setOpenAiError("Please paste your OpenAI API key.");
+      return;
+    }
+
+    try {
+      setOpenAiError(null);
+      const response = await fetch(`${apiBase}/api/auth/openai-key`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ apiKey: openAiKey.trim() }),
+      });
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || response.statusText);
+      }
+
+      setHasOpenAiKey(true);
+      setOpenAiKey("");
+    } catch (error: any) {
+      setOpenAiError(error.message ?? "Failed to store OpenAI API key");
+    }
+  };
+
+  const handleOpenAiLogout = async () => {
+    try {
+      const response = await fetch(`${apiBase}/api/auth/openai-key`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || response.statusText);
+      }
+
+      setHasOpenAiKey(false);
+    } catch (error: any) {
+      setOpenAiError(error.message ?? "Failed to remove OpenAI API key");
+    }
+  };
 
   const handleGenerate = async () => {
     if (!selectedRepo || !baseBranch || !userPrompt) return;
@@ -130,6 +198,32 @@ function App() {
         </button>
       </div>
 
+      <div className="card" style={{ display: "flex", gap: "1rem", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ flex: 1 }}>
+          <h3>OpenAI Account</h3>
+          <p style={{ marginBottom: "0.5rem" }}>
+            Log in to your OpenAI account and paste an API key so Codex can generate changes on your behalf.
+            You can create or view keys on the
+            <a href="https://platform.openai.com/account/api-keys" target="_blank" rel="noreferrer"> OpenAI API keys page</a>.
+          </p>
+          <form onSubmit={handleOpenAiSubmit} className="flex-row" style={{ gap: "0.5rem", alignItems: "center" }}>
+            <input
+              type="password"
+              placeholder="sk-..."
+              value={openAiKey}
+              onChange={(e) => setOpenAiKey(e.target.value)}
+              style={{ flex: 1 }}
+            />
+            <button type="submit">Save API Key</button>
+            <button type="button" onClick={handleOpenAiLogout} disabled={!hasOpenAiKey}>
+              Remove key
+            </button>
+          </form>
+          {hasOpenAiKey && <div style={{ marginTop: "0.25rem" }}>OpenAI API key is stored for this browser.</div>}
+          {openAiError && <div className="error">{openAiError}</div>}
+        </div>
+      </div>
+
       <div className="card">
         <RepoSelector
           repos={repoOptions}
@@ -172,7 +266,7 @@ function App() {
             prompt={userPrompt}
             onChange={setUserPrompt}
             onGenerate={handleGenerate}
-            disabled={isGenerating || !baseBranch}
+            disabled={isGenerating || !baseBranch || !hasOpenAiKey}
           />
           {applyError && <div className="error">{applyError}</div>}
         </div>
