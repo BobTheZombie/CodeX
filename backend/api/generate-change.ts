@@ -1,7 +1,7 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
 import { Octokit } from "@octokit/rest";
 import OpenAI from "openai";
-import { requireGitHubToken } from "./utils/auth";
+import { requireGitHubToken, requireOpenAiApiKey } from "./utils/auth";
 
 const systemPrompt = `You are an expert software engineer assistant. Return ONLY JSON with the shape:\n{\n  "changes": [\n    {\n      "path": "string",\n      "operation": "create" | "modify" | "delete",\n      "contents": "string"\n    }\n  ],\n  "commitMessage": "string"\n}\n- Include full file contents for create/modify.\n- Do not include Markdown.\n- Keep the response concise.`;
 
@@ -20,14 +20,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const token = requireGitHubToken(req, res);
   if (!token) return;
 
-  if (!process.env.OPENAI_API_KEY) {
-    res.status(500).json({ error: "OPENAI_API_KEY is not set" });
-    return;
-  }
-
   try {
     const octokit = new Octokit({ auth: token });
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const openAiApiKey = requireOpenAiApiKey(req, res);
+    if (!openAiApiKey) return;
+    const openai = new OpenAI({ apiKey: openAiApiKey });
 
     const fileContents: string[] = [];
 

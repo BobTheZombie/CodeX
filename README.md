@@ -20,7 +20,7 @@ frontend/         # React + Vite frontend for GitHub Pages
 1. Create a new Vercel project and point the **Root Directory** to `backend`.
 2. Ensure "Framework Preset" is set to **Other** (functions only).
 3. Add environment variables:
-   - `OPENAI_API_KEY`: OpenAI API key.
+   - `OPENAI_API_KEY`: OpenAI API key (optional if users will provide their own via the UI).
    - `GITHUB_TOKEN`: Personal Access Token with `repo` scope (or swap to a GitHub App token later).
 4. Deploy. The API endpoints will be exposed under `/api/*`.
 
@@ -53,6 +53,7 @@ npm run dev
 - `POST /api/list-files` — lists files/directories at a given path and ref.
 - `POST /api/generate-change` — fetches file contents and asks OpenAI to propose JSON-formatted changes + commit message.
 - `POST /api/apply-change` — creates a branch, commits blobs/trees for the proposed changes, and optionally opens a PR.
+- `GET/POST/DELETE /api/auth/openai-key` — check for, store, or remove an OpenAI API key for the current browser session via an HttpOnly cookie.
 
 ## Environment Variables
 
@@ -67,9 +68,10 @@ Frontend (build-time):
 
 1. Choose a repository and base branch.
 2. Browse/select files to use as context.
-3. Enter a prompt describing the desired change and generate a proposal.
-4. Review the proposed file contents and commit message.
-5. Apply the changes by creating a branch/commit and optionally a pull request.
+3. Log in to your OpenAI account, create an API key, and save it in the app so it can call OpenAI on your behalf.
+4. Enter a prompt describing the desired change and generate a proposal.
+5. Review the proposed file contents and commit message.
+6. Apply the changes by creating a branch/commit and optionally a pull request.
 
 ## Notes
 

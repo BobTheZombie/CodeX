@@ -1,8 +1,9 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
 
 const COOKIE_NAME = "github_token";
+const OPENAI_COOKIE_NAME = "openai_api_key";
 
-const parseCookies = (cookieHeader?: string) => {
+export const parseCookies = (cookieHeader?: string) => {
   if (!cookieHeader) return {} as Record<string, string>;
 
   return Object.fromEntries(
@@ -38,6 +39,27 @@ export const requireGitHubToken = (req: VercelRequest, res: VercelResponse): str
   return token;
 };
 
+export const getOpenAiApiKey = (req: VercelRequest): string | null => {
+  const headerKey = req.headers["x-openai-key"];
+  if (typeof headerKey === "string" && headerKey.trim()) {
+    return headerKey.trim();
+  }
+
+  const cookies = parseCookies(req.headers.cookie);
+  return cookies[OPENAI_COOKIE_NAME] ?? null;
+};
+
+export const requireOpenAiApiKey = (req: VercelRequest, res: VercelResponse): string | null => {
+  const apiKey = getOpenAiApiKey(req) ?? process.env.OPENAI_API_KEY ?? null;
+
+  if (!apiKey) {
+    res.status(401).json({ error: "Missing OpenAI API key" });
+    return null;
+  }
+
+  return apiKey;
+};
+
 export const buildCallbackUrl = (req: VercelRequest) => {
   const host = req.headers.host;
   const forwardedProto = req.headers["x-forwarded-proto"] as string | undefined;
@@ -69,3 +91,17 @@ export const oauthCookie = (token: string) => {
     `Max-Age=${maxAgeSeconds}`,
   ].join("; ");
 };
+
+export const openAiCookie = (apiKey: string) => {
+  const maxAgeSeconds = 60 * 60 * 24 * 30; // 30 days
+  return [
+    `${OPENAI_COOKIE_NAME}=${encodeURIComponent(apiKey)}`,
+    "HttpOnly",
+    "Secure",
+    "SameSite=Lax",
+    "Path=/",
+    `Max-Age=${maxAgeSeconds}`,
+  ].join("; ");
+};
+
+export const clearOpenAiCookie = () => `${OPENAI_COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`;
