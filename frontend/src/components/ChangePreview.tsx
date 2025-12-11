@@ -12,10 +12,11 @@ export interface ProposedChangeSet {
 interface Props {
   changeSet: ProposedChangeSet;
   onApply: (branch: string, openPr: boolean) => void;
+  onChange: (changeSet: ProposedChangeSet) => void;
   applyResult: { branch: string; commitSha: string; pullRequestUrl: string | null } | null;
 }
 
-const ChangePreview = ({ changeSet, onApply, applyResult }: Props) => {
+const ChangePreview = ({ changeSet, onApply, onChange, applyResult }: Props) => {
   const [branchName, setBranchName] = useState<string>("ai/feature-");
   const [openPr, setOpenPr] = useState<boolean>(true);
 
@@ -24,19 +25,49 @@ const ChangePreview = ({ changeSet, onApply, applyResult }: Props) => {
     [changeSet]
   );
 
+  const handleContentChange = (index: number, value: string) => {
+    const updatedChanges = changeSet.changes.map((change, i) =>
+      i === index ? { ...change, contents: value } : change
+    );
+    onChange({ ...changeSet, changes: updatedChanges });
+  };
+
+  const handleCommitMessageChange = (value: string) => {
+    onChange({ ...changeSet, commitMessage: value });
+  };
+
   return (
     <div>
       <h3>Proposed Changes</h3>
       <p>{summary}</p>
-      {changeSet.changes.map((change) => (
+      {changeSet.changes.map((change, index) => (
         <div key={change.path} style={{ marginBottom: "1rem" }}>
           <strong>
             {change.operation.toUpperCase()} · {change.path}
           </strong>
-          {change.contents && <pre className="code-block">{change.contents}</pre>}
+          {change.contents !== undefined && (
+            <textarea
+              className="code-block"
+              value={change.contents}
+              onChange={(e) => handleContentChange(index, e.target.value)}
+              rows={Math.min(Math.max(change.contents.split("\n").length, 4), 30)}
+            />
+          )}
           {!change.contents && change.operation === "delete" && <div>File will be deleted.</div>}
         </div>
       ))}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "0.5rem" }}>
+        <label htmlFor="commit-message" style={{ marginBottom: 0 }}>
+          Commit message:
+        </label>
+        <input
+          id="commit-message"
+          className="small-input"
+          value={changeSet.commitMessage}
+          onChange={(e) => handleCommitMessageChange(e.target.value)}
+        />
+      </div>
 
       <div className="flex-row">
         <label htmlFor="branch" style={{ marginBottom: 0 }}>New branch:</label>
