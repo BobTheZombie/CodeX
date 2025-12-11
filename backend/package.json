@@ -1,0 +1,20 @@
+{
+  "name": "codex-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "tsc",
+    "start": "vercel dev"
+  },
+  "dependencies": {
+    "@octokit/rest": "^21.0.2",
+    "openai": "^4.79.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "@vercel/node": "^3.0.20",
+    "typescript": "^5.4.5"
+  }
+}
