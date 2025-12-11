@@ -1,13 +1,6 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
 import { Octokit } from "@octokit/rest";
-
-const ensureGitHubToken = () => {
-  const token = process.env.GITHUB_TOKEN;
-  if (!token) {
-    throw new Error("GITHUB_TOKEN is not set");
-  }
-  return token;
-};
+import { requireGitHubToken } from "./utils/auth";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
@@ -15,8 +8,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
+  const token = requireGitHubToken(req, res);
+  if (!token) return;
+
   try {
-    const octokit = new Octokit({ auth: ensureGitHubToken() });
+    const octokit = new Octokit({ auth: token });
     const { data } = await octokit.repos.listForAuthenticatedUser({ per_page: 100 });
 
     const repos = data.map((repo) => ({

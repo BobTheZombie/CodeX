@@ -15,17 +15,20 @@ interface Props {
   onChange: (paths: string[]) => void;
 }
 
-const apiBase = import.meta.env.VITE_API_BASE_URL;
+const apiBase = import.meta.env.VITE_API_BASE_URL ?? "";
 
 const postJson = async <T,>(path: string, body?: unknown): Promise<T> => {
   const response = await fetch(`${apiBase}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify(body ?? {}),
   });
   if (!response.ok) {
     const message = await response.text();
-    throw new Error(message || response.statusText);
+    const error = new Error(message || response.statusText) as Error & { status?: number };
+    error.status = response.status;
+    throw error;
   }
   return response.json() as Promise<T>;
 };
@@ -47,7 +50,11 @@ const FileSelector = ({ repo, baseBranch, selected, onChange }: Props) => {
       });
       setEntries(data);
     } catch (err: any) {
-      setError(err.message ?? "Failed to load files");
+      if (err.status === 401) {
+        setError("Authentication required. Please log in with GitHub.");
+      } else {
+        setError(err.message ?? "Failed to load files");
+      }
     }
   };
 
