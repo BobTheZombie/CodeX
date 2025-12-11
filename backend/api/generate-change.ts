@@ -40,13 +40,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       fileContents.push(`FILE: ${path}\n${content}`);
     }
 
-    const prompt = [
-      "You will propose code changes.",
-      "Existing files:",
-      fileContents.join("\n\n"),
-      "User instructions:",
-      userPrompt,
-    ].join("\n\n");
+    const promptSections = ["You will propose code changes."];
+
+    if (fileContents.length > 0) {
+      promptSections.push("Existing files:", fileContents.join("\n\n"));
+    }
+
+    promptSections.push("User instructions:", userPrompt);
+
+    const prompt = promptSections.join("\n\n");
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",

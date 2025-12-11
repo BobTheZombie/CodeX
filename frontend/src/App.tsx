@@ -165,7 +165,7 @@ function App() {
             prompt={userPrompt}
             onChange={setUserPrompt}
             onGenerate={handleGenerate}
-            disabled={isGenerating || !baseBranch || selectedFiles.length === 0}
+            disabled={isGenerating || !baseBranch}
           />
           {applyError && <div className="error">{applyError}</div>}
         </div>
