@@ -50,21 +50,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const prompt = promptSections.join("\n\n");
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: prompt },
-      ],
-      response_format: { type: "json_object" },
-    });
+    let completion;
+    try {
+      completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: prompt },
+        ],
+        response_format: { type: "json_object" },
+      });
+    } catch (apiError: any) {
+      console.error(apiError);
+      res.status(500).json({ error: apiError.message ?? "Failed to generate changes" });
+      return;
+    }
 
     const raw = completion.choices[0]?.message?.content;
     if (!raw) {
       throw new Error("OpenAI returned an empty response");
     }
 
-    res.status(200).send(raw);
+    try {
+      const parsed = JSON.parse(raw);
+      res.status(200).json(parsed);
+    } catch (parseError) {
+      console.error(parseError);
+      res.status(500).json({ error: "Invalid JSON from AI" });
+    }
   } catch (error: any) {
     console.error(error);
     res.status(500).json({ error: error.message ?? "Failed to generate changes" });
