@@ -31,6 +31,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const baseCommitSha = baseRef.data.object.sha;
     const baseCommit = await octokit.git.getCommit({ owner, repo, commit_sha: baseCommitSha });
 
+    try {
+      await octokit.git.getRef({ owner, repo, ref: `heads/${newBranchName}` });
+      res
+        .status(400)
+        .json({ error: `Branch ${newBranchName} already exists. Please choose a different branch name.` });
+      return;
+    } catch (error: any) {
+      if (error.status !== 404) {
+        throw error;
+      }
+    }
+
     const treeItems = [] as Array<{ path: string; mode: "100644"; type: "blob"; sha: string | null }>;
 
     for (const change of changes as Change[]) {
@@ -47,20 +59,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       treeItems.push({ path: change.path, mode: "100644", type: "blob", sha: blob.data.sha });
     }
 
-    const tree = await octokit.git.createTree({
-      owner,
-      repo,
-      base_tree: baseCommit.data.tree.sha,
-      tree: treeItems,
-    });
+    let commit: Awaited<ReturnType<typeof octokit.git.createCommit>>;
+    try {
+      const tree = await octokit.git.createTree({
+        owner,
+        repo,
+        base_tree: baseCommit.data.tree.sha,
+        tree: treeItems,
+      });
 
-    const commit = await octokit.git.createCommit({
-      owner,
-      repo,
-      message: commitMessage,
-      tree: tree.data.sha,
-      parents: [baseCommitSha],
-    });
+      commit = await octokit.git.createCommit({
+        owner,
+        repo,
+        message: commitMessage,
+        tree: tree.data.sha,
+        parents: [baseCommitSha],
+      });
+    } catch (error: any) {
+      console.error(error);
+      res.status(error.status ?? 500).json({ error: error.message ?? "Failed to create commit" });
+      return;
+    }
 
     await octokit.git.createRef({
       owner,
