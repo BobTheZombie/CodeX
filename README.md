@@ -75,3 +75,5 @@ Frontend (build-time):
 
 - The frontend never stores secrets; all secret usage is in the backend via environment variables.
 - The backend is written to be swapped to a GitHub App token in the future without significant changes.
+- The experience is designed to mirror Codex without app-level prompt caps (no hourly, weekly, or monthly limits beyond your own
+  API quotas).

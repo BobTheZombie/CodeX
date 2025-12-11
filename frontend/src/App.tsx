@@ -113,6 +113,13 @@ function App() {
   return (
     <div className="container">
       <h1>AI Codex Control Panel</h1>
+      <div className="card notice">
+        <h3>Unlimited prompt flow</h3>
+        <p style={{ margin: 0 }}>
+          This interface mirrors the original Codex-style workflow without imposing 5-hour, weekly, or monthly
+          caps. You can iterate freely; usage is only bound by your own OpenAI and GitHub account quotas.
+        </p>
+      </div>
       <div className="card" style={{ display: "flex", gap: "1rem", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <h3>Authentication</h3>
