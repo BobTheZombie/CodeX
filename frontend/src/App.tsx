@@ -395,6 +395,9 @@ function App() {
             onGenerate={handleGenerate}
             disabled={isGenerating || !baseBranch || !hasOpenAiKey}
             supportedLanguages={supportedLanguages}
+            selectedFiles={selectedFiles}
+            repoName={selectedRepo.fullName}
+            baseBranch={baseBranch}
           />
           {applyError && <div className="error">{applyError}</div>}
         </div>
