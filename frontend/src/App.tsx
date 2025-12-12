@@ -7,6 +7,20 @@ import ChangePreview, { ProposedChangeSet } from "./components/ChangePreview";
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? "";
 const githubClientId = import.meta.env.VITE_GITHUB_CLIENT_ID;
 const authRedirectUri = `${apiBase}/api/auth/callback`;
+const supportedLanguages = [
+  "C",
+  "C++",
+  "Python",
+  "Rust",
+  "Lua",
+  "XML",
+  "Java",
+  "Bash",
+  "Perl",
+  "Assembly",
+  "HTML",
+  "HTML5",
+];
 
 const postJson = async <T,>(path: string, body?: unknown): Promise<T> => {
   const response = await fetch(`${apiBase}${path}`, {
@@ -267,6 +281,7 @@ function App() {
             onChange={setUserPrompt}
             onGenerate={handleGenerate}
             disabled={isGenerating || !baseBranch || !hasOpenAiKey}
+            supportedLanguages={supportedLanguages}
           />
           {applyError && <div className="error">{applyError}</div>}
         </div>
