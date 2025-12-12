@@ -25,7 +25,15 @@ export const getGitHubToken = (req: VercelRequest): string | null => {
   }
 
   const cookies = parseCookies(req.headers.cookie);
-  return cookies[COOKIE_NAME] ?? null;
+  if (cookies[COOKIE_NAME]) {
+    return cookies[COOKIE_NAME];
+  }
+
+  if (process.env.GITHUB_TOKEN?.trim()) {
+    return process.env.GITHUB_TOKEN.trim();
+  }
+
+  return null;
 };
 
 export const requireGitHubToken = (req: VercelRequest, res: VercelResponse): string | null => {

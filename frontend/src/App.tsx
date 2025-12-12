@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import RepoSelector, { RepoSummary } from "./components/RepoSelector";
 import FileSelector from "./components/FileSelector";
 import PromptPanel from "./components/PromptPanel";
@@ -56,6 +56,9 @@ function App() {
   const [agentResult, setAgentResult] = useState<AgentWorkflowResult | null>(null);
   const [agentError, setAgentError] = useState<string | null>(null);
   const [isRunningAgents, setIsRunningAgents] = useState(false);
+  const [hasGitHubToken, setHasGitHubToken] = useState(false);
+  const [githubTokenInput, setGithubTokenInput] = useState("");
+  const [githubError, setGithubError] = useState<string | null>(null);
 
   const authorizeUrl = useMemo(() => {
     if (!githubClientId) return null;
@@ -70,21 +73,42 @@ function App() {
     window.location.href = authorizeUrl;
   };
 
+  const loadRepos = useCallback(async () => {
+    try {
+      setRepoError(null);
+      const data = await postJson<RepoSummary[]>("/api/list-repos");
+      setRepos(data);
+      setHasGitHubToken(true);
+    } catch (error: any) {
+      if (error.status === 401) {
+        setRepoError("Please log in with GitHub or paste a token to continue.");
+        setHasGitHubToken(false);
+      } else {
+        setRepoError(error.message ?? "Failed to load repositories");
+      }
+    }
+  }, []);
+
   useEffect(() => {
-    const loadRepos = async () => {
+    loadRepos();
+  }, [loadRepos]);
+
+  useEffect(() => {
+    const fetchGitHubStatus = async () => {
       try {
-        setRepoError(null);
-        const data = await postJson<RepoSummary[]>("/api/list-repos");
-        setRepos(data);
-      } catch (error: any) {
-        if (error.status === 401) {
-          setRepoError("Please log in with GitHub to continue.");
-        } else {
-          setRepoError(error.message ?? "Failed to load repositories");
+        setGithubError(null);
+        const response = await fetch(`${apiBase}/api/auth/github-token`, { credentials: "include" });
+        if (!response.ok) {
+          throw new Error("Failed to verify GitHub login");
         }
+        const data = (await response.json()) as { hasToken?: boolean };
+        setHasGitHubToken(Boolean(data.hasToken));
+      } catch (error: any) {
+        setGithubError(error.message ?? "Failed to verify GitHub login");
       }
     };
-    loadRepos();
+
+    fetchGitHubStatus();
   }, []);
 
   useEffect(() => {
@@ -149,6 +173,50 @@ function App() {
       setHasOpenAiKey(false);
     } catch (error: any) {
       setOpenAiError(error.message ?? "Failed to remove OpenAI API key");
+    }
+  };
+
+  const handleGitHubTokenSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!githubTokenInput.trim()) {
+      setGithubError("Please paste a GitHub Personal Access Token.");
+      return;
+    }
+
+    try {
+      setGithubError(null);
+      const response = await fetch(`${apiBase}/api/auth/github-token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ token: githubTokenInput.trim() }),
+      });
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || response.statusText);
+      }
+
+      setHasGitHubToken(true);
+      setGithubTokenInput("");
+      await loadRepos();
+    } catch (error: any) {
+      setGithubError(error.message ?? "Failed to store GitHub token");
+    }
+  };
+
+  const handleGitHubLogout = async () => {
+    try {
+      const response = await fetch(`${apiBase}/api/auth/github-token`, { method: "DELETE", credentials: "include" });
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || response.statusText);
+      }
+      setHasGitHubToken(false);
+      setRepos([]);
+      setSelectedRepo(null);
+    } catch (error: any) {
+      setGithubError(error.message ?? "Failed to clear GitHub token");
     }
   };
 
@@ -231,7 +299,24 @@ function App() {
       <div className="card" style={{ display: "flex", gap: "1rem", alignItems: "center", justifyContent: "space-between" }}>
         <div>
           <h3>Authentication</h3>
-          <p style={{ marginBottom: 0 }}>Sign in with GitHub to list repositories and apply changes.</p>
+          <p style={{ marginBottom: "0.5rem" }}>
+            Sign in with GitHub or paste a Personal Access Token to list repositories and apply commits directly from CodeX.
+          </p>
+          <form onSubmit={handleGitHubTokenSubmit} className="flex-row" style={{ gap: "0.5rem", alignItems: "center" }}>
+            <input
+              type="password"
+              placeholder="ghp_..."
+              value={githubTokenInput}
+              onChange={(e) => setGithubTokenInput(e.target.value)}
+              style={{ flex: 1 }}
+            />
+            <button type="submit">Save Token</button>
+            <button type="button" onClick={handleGitHubLogout} disabled={!hasGitHubToken}>
+              Remove token
+            </button>
+          </form>
+          {hasGitHubToken && <div style={{ marginTop: "0.25rem" }}>GitHub access is configured.</div>}
+          {githubError && <div className="error">{githubError}</div>}
         </div>
         <button onClick={handleLogin} disabled={!authorizeUrl}>
           Login with GitHub
