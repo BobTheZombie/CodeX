@@ -3,7 +3,22 @@ import { Octokit } from "@octokit/rest";
 import OpenAI from "openai";
 import { requireGitHubToken, requireOpenAiApiKey } from "./utils/auth";
 
-const systemPrompt = `You are an expert software engineer assistant. Return ONLY JSON with the shape:\n{\n  "changes": [\n    {\n      "path": "string",\n      "operation": "create" | "modify" | "delete",\n      "contents": "string"\n    }\n  ],\n  "commitMessage": "string"\n}\n- Include full file contents for create/modify.\n- Do not include Markdown.\n- Keep the response concise.`;
+const supportedLanguages = [
+  "C",
+  "C++",
+  "Python",
+  "Rust",
+  "Lua",
+  "XML",
+  "Java",
+  "Bash",
+  "Perl",
+  "Assembly",
+  "HTML",
+  "HTML5",
+];
+
+const systemPrompt = `You are an expert software engineer assistant. Return ONLY JSON with the shape:\n{\n  "changes": [\n    {\n      "path": "string",\n      "operation": "create" | "modify" | "delete",\n      "contents": "string"\n    }\n  ],\n  "commitMessage": "string"\n}\n- Include full file contents for create/modify.\n- Do not include Markdown.\n- Keep the response concise.\n- Code generation is enabled for: ${supportedLanguages.join(", ")}.`;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {

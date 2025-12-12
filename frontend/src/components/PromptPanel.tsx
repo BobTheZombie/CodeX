@@ -3,9 +3,12 @@ interface Props {
   onChange: (value: string) => void;
   onGenerate: () => void;
   disabled?: boolean;
+  supportedLanguages?: string[];
 }
 
-const PromptPanel = ({ prompt, onChange, onGenerate, disabled }: Props) => {
+const PromptPanel = ({ prompt, onChange, onGenerate, disabled, supportedLanguages }: Props) => {
+  const languageList = supportedLanguages?.join(", ");
+
   return (
     <div>
       <label htmlFor="prompt">Instructions</label>
@@ -15,6 +18,11 @@ const PromptPanel = ({ prompt, onChange, onGenerate, disabled }: Props) => {
         value={prompt}
         onChange={(e) => onChange(e.target.value)}
       />
+      {languageList && (
+        <p style={{ marginTop: "0.25rem", fontSize: "0.95rem", color: "#475569" }}>
+          Enabled languages: {languageList}
+        </p>
+      )}
       <button onClick={onGenerate} disabled={disabled}>
         Generate Changes
       </button>
