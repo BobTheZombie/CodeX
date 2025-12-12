@@ -3,6 +3,7 @@ import RepoSelector, { RepoSummary } from "./components/RepoSelector";
 import FileSelector from "./components/FileSelector";
 import PromptPanel from "./components/PromptPanel";
 import ChangePreview, { ProposedChangeSet } from "./components/ChangePreview";
+import AgentOrchestrator, { AgentWorkflowResult } from "./components/AgentOrchestrator";
 
 const apiBase = import.meta.env.VITE_API_BASE_URL ?? "";
 const githubClientId = import.meta.env.VITE_GITHUB_CLIENT_ID;
@@ -52,6 +53,9 @@ function App() {
   const [hasOpenAiKey, setHasOpenAiKey] = useState(false);
   const [openAiKey, setOpenAiKey] = useState("");
   const [openAiError, setOpenAiError] = useState<string | null>(null);
+  const [agentResult, setAgentResult] = useState<AgentWorkflowResult | null>(null);
+  const [agentError, setAgentError] = useState<string | null>(null);
+  const [isRunningAgents, setIsRunningAgents] = useState(false);
 
   const authorizeUrl = useMemo(() => {
     if (!githubClientId) return null;
@@ -153,6 +157,7 @@ function App() {
     setIsGenerating(true);
     setChangeSet(null);
     setApplyResult(null);
+    setAgentResult(null);
     setApplyError(null);
     try {
       const response = await postJson<ProposedChangeSet>("/api/generate-change", {
@@ -167,6 +172,27 @@ function App() {
       setApplyError(error.message ?? "Failed to generate changes");
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleRunAgents = async () => {
+    if (!selectedRepo || !baseBranch || !userPrompt) return;
+    setIsRunningAgents(true);
+    setAgentError(null);
+    setAgentResult(null);
+    try {
+      const response = await postJson<AgentWorkflowResult>("/api/agent-workflow", {
+        owner: selectedRepo.fullName.split("/")[0],
+        repo: selectedRepo.name,
+        baseBranch,
+        filePaths: selectedFiles,
+        userPrompt,
+      });
+      setAgentResult(response);
+    } catch (error: any) {
+      setAgentError(error.message ?? "Failed to run agent swarm");
+    } finally {
+      setIsRunningAgents(false);
     }
   };
 
@@ -247,6 +273,8 @@ function App() {
             setBaseBranch(repo?.defaultBranch ?? "");
             setChangeSet(null);
             setApplyResult(null);
+            setAgentResult(null);
+            setAgentError(null);
           }}
         />
         {selectedRepo && (
@@ -285,6 +313,16 @@ function App() {
           />
           {applyError && <div className="error">{applyError}</div>}
         </div>
+      )}
+
+      {selectedRepo && (
+        <AgentOrchestrator
+          onRun={handleRunAgents}
+          result={agentResult}
+          disabled={!hasOpenAiKey || !userPrompt || !baseBranch}
+          isRunning={isRunningAgents}
+          error={agentError}
+        />
       )}
 
       {changeSet && (
