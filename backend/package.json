@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vercel dev",
+    "dev": "vercel dev --listen 0.0.0.0:3000 --yes",
     "build": "tsc",
-    "start": "vercel dev"
+    "start": "vercel dev --listen 0.0.0.0:3000 --yes"
   },
   "dependencies": {
     "@octokit/rest": "^21.0.2",
@@ -15,6 +15,7 @@
   "devDependencies": {
     "@types/node": "^20.12.12",
     "@vercel/node": "^3.0.20",
+    "vercel": "^50.0.0",
     "typescript": "^5.4.5"
   }
 }
