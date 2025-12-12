@@ -3,6 +3,8 @@
   line-height: 1.5;
   color: #0f172a;
   background-color: #f8fafc;
+  --muted-bg: #f1f5f9;
+  --muted-text: #475569;
 }
 
 body {
