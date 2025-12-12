@@ -32,6 +32,14 @@ npm install
 npm run dev   # runs vercel dev
 ```
 
+### One-shot installer (Ubuntu/Debian)
+
+To install all prerequisites (Node.js, npm, Vercel CLI, and project dependencies) on an Ubuntu-based system, run:
+
+```bash
+./scripts/install.sh
+```
+
 ## Frontend (GitHub Pages) Setup
 
 1. In repo settings, enable GitHub Pages to serve from the `gh-pages` branch.
